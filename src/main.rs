@@ -1,34 +1,28 @@
-use mini_redis::{client, Result};
-
-/// An async function returns an anonymous type that implements the Future
-/// trait.
-async fn say_world() {
-    println!("world");
-}
+use mini_redis::{Connection, Frame};
+use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    let op = say_world();
-    println!("hello");
-    op.await;
+async fn main() {
+    // Bind the listener to the address
+    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
 
-    // Open a connectionto the mini-redis address.
-    //
-    // The client::connect function is provided by the mini-redis crate It
-    // asynchronously establishes a TCP connection with the specified remote
-    // address. Once the connection is established, a client handle is returned.
-    // Even though the operation is performed asynchronously, the code we write
-    // looks synchronous. The only indication that the operation is asynchronous is
-    // the .await operator.
-    let mut client = client::connect("127.0.0.1:6379").await?;
+    loop {
+        // The second item contains the IP and port of the new connection
+        let (socket, _) = listener.accept().await.unwrap();
+        process(socket).await;
+    }
+}
 
-    // Set the key "hello" with value "world"
-    client.set("hello", "world".into()).await?;
+async fn process(socket: TcpStream) {
+    // The `Connection` lets us read/write redit **frames** instead of byte streams.
+    // The `Connection` type is defined by mini-redis.
+    let mut connection = Connection::new(socket);
 
-    // Get key "hello"
-    let result = client.get("hello").await?;
+    if let Some(frame) = connection.read_frame().await.unwrap() {
+        println!("GOT: {:?}", frame);
 
-    println!("got value from the server; result={:?}", result);
-
-    Ok(())
+        // Respond with an error
+        let response = Frame::Error("Unimplemented".to_string());
+        connection.write_frame(&response).await.unwrap();
+    }
 }
