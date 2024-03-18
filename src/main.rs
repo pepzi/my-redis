@@ -1,7 +1,17 @@
 use mini_redis::{client, Result};
 
+/// An async function returns an anonymous type that implements the Future
+/// trait.
+async fn say_world() {
+    println!("world");
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    let op = say_world();
+    println!("hello");
+    op.await;
+
     // Open a connectionto the mini-redis address.
     //
     // The client::connect function is provided by the mini-redis crate It
